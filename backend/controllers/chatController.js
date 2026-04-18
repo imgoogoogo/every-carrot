@@ -79,4 +79,79 @@ async function getChatList(req, res) {
   }
 }
 
-module.exports = { getChatList };
+async function createChatRoom(req, res) {
+  const buyerId = req.user.id;
+  const { product_id, seller_id } = req.body;
+
+  if (!product_id || !seller_id) {
+    return res.status(400).json({
+      success: false,
+      message: "product_id와 seller_id는 필수 항목입니다.",
+      error: { code: "MISSING_REQUIRED_FIELDS" },
+    });
+  }
+
+  if (buyerId === seller_id) {
+    return res.status(400).json({
+      success: false,
+      message: "자신의 상품에는 채팅을 시작할 수 없습니다.",
+      error: { code: "CANNOT_CHAT_WITH_YOURSELF" },
+    });
+  }
+
+  try {
+    // 상품 존재 여부 확인
+    const [productRows] = await pool.query(
+      "SELECT id FROM products WHERE id = ? AND seller_id = ?",
+      [product_id, seller_id]
+    );
+    if (productRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "상품을 찾을 수 없습니다.",
+        error: { code: "PRODUCT_NOT_FOUND" },
+      });
+    }
+
+    // 기존 채팅방 조회
+    const [existing] = await pool.query(
+      `SELECT id, product_id, buyer_id, seller_id, created_at
+       FROM chat_rooms
+       WHERE product_id = ? AND buyer_id = ? AND seller_id = ?`,
+      [product_id, buyerId, seller_id]
+    );
+
+    if (existing.length > 0) {
+      return res.status(200).json({
+        success: true,
+        data: existing[0],
+      });
+    }
+
+    // 새 채팅방 생성
+    const [result] = await pool.query(
+      "INSERT INTO chat_rooms (product_id, buyer_id, seller_id) VALUES (?, ?, ?)",
+      [product_id, buyerId, seller_id]
+    );
+
+    const [newRoom] = await pool.query(
+      `SELECT id, product_id, buyer_id, seller_id, created_at
+       FROM chat_rooms WHERE id = ?`,
+      [result.insertId]
+    );
+
+    return res.status(201).json({
+      success: true,
+      data: newRoom[0],
+    });
+  } catch (err) {
+    console.error("채팅방 생성 오류:", err);
+    return res.status(500).json({
+      success: false,
+      message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      error: { code: "SERVER_ERROR" },
+    });
+  }
+}
+
+module.exports = { getChatList, createChatRoom };
