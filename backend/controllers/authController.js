@@ -1,7 +1,7 @@
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db");
+const userModel = require("../models/userModel");
 const { saveCode, getCode, deleteCode, markVerified, isVerified, clearVerified } = require("../utils/verificationStore");
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || "dongguk.ac.kr";
@@ -78,7 +78,6 @@ async function verifyEmail(req, res) {
   }
 
   const savedCode = getCode(email);
-
   if (!savedCode || savedCode !== code) {
     return res.status(400).json({
       success: false,
@@ -99,7 +98,6 @@ async function verifyEmail(req, res) {
 async function register(req, res) {
   const { email, password, nickname, department } = req.body;
 
-  // 필수값 검증
   if (!email || !password || !nickname) {
     return res.status(400).json({
       success: false,
@@ -108,7 +106,6 @@ async function register(req, res) {
     });
   }
 
-  // 이메일 인증 완료 여부 확인
   if (!isVerified(email)) {
     return res.status(400).json({
       success: false,
@@ -117,7 +114,6 @@ async function register(req, res) {
     });
   }
 
-  // 비밀번호 검증: 8자 이상, 영문+숫자 조합
   const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
   if (!passwordRegex.test(password)) {
     return res.status(400).json({
@@ -127,7 +123,6 @@ async function register(req, res) {
     });
   }
 
-  // 닉네임 검증: 2~30자
   if (nickname.length < 2 || nickname.length > 30) {
     return res.status(400).json({
       success: false,
@@ -137,12 +132,7 @@ async function register(req, res) {
   }
 
   try {
-    // 이메일 중복 확인
-    const [emailRows] = await pool.query(
-      "SELECT id FROM users WHERE email = ?",
-      [email]
-    );
-    if (emailRows.length > 0) {
+    if (await userModel.emailExists(email)) {
       return res.status(409).json({
         success: false,
         message: "이미 사용 중인 이메일입니다.",
@@ -150,12 +140,7 @@ async function register(req, res) {
       });
     }
 
-    // 닉네임 중복 확인
-    const [nicknameRows] = await pool.query(
-      "SELECT id FROM users WHERE nickname = ?",
-      [nickname]
-    );
-    if (nicknameRows.length > 0) {
+    if (await userModel.nicknameExists(nickname)) {
       return res.status(409).json({
         success: false,
         message: "이미 사용 중인 닉네임입니다.",
@@ -163,28 +148,14 @@ async function register(req, res) {
       });
     }
 
-    // 비밀번호 해시
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 사용자 등록
-    const [result] = await pool.query(
-      "INSERT INTO users (email, password, nickname, department, is_verified) VALUES (?, ?, ?, ?, TRUE)",
-      [email, hashedPassword, nickname, department || null]
-    );
-
-    // 인증 상태 정리
+    const newUser = await userModel.create({ email, hashedPassword, nickname, department });
     clearVerified(email);
-
-    // 생성된 사용자 조회
-    const [newUser] = await pool.query(
-      "SELECT id, email, nickname, department, created_at FROM users WHERE id = ?",
-      [result.insertId]
-    );
 
     return res.status(201).json({
       success: true,
       message: "회원가입이 완료되었습니다.",
-      data: newUser[0],
+      data: newUser,
     });
   } catch (err) {
     console.error("회원가입 오류:", err);
@@ -208,23 +179,8 @@ async function login(req, res) {
   }
 
   try {
-    const [rows] = await pool.query(
-      "SELECT id, email, password, nickname, department FROM users WHERE email = ?",
-      [email]
-    );
-
-    if (rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: "이메일 또는 비밀번호가 올바르지 않습니다.",
-        error: { code: "INVALID_CREDENTIALS" },
-      });
-    }
-
-    const user = rows[0];
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
+    const user = await userModel.findByEmail(email);
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({
         success: false,
         message: "이메일 또는 비밀번호가 올바르지 않습니다.",
@@ -237,7 +193,6 @@ async function login(req, res) {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "1h" }
     );
-
     const refreshToken = jwt.sign(
       { id: user.id },
       process.env.JWT_REFRESH_SECRET,
@@ -248,7 +203,7 @@ async function login(req, res) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
@@ -257,11 +212,7 @@ async function login(req, res) {
       data: {
         access_token: accessToken,
         token_type: "Bearer",
-        user: {
-          id: user.id,
-          email: user.email,
-          nickname: user.nickname,
-        },
+        user: { id: user.id, email: user.email, nickname: user.nickname },
       },
     });
   } catch (err) {
@@ -301,13 +252,9 @@ async function refresh(req, res) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const user = await userModel.findById(decoded.id);
 
-    const [rows] = await pool.query(
-      "SELECT id, email FROM users WHERE id = ?",
-      [decoded.id]
-    );
-
-    if (rows.length === 0) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: "Refresh Token이 만료되었습니다. 다시 로그인해주세요.",
@@ -315,7 +262,6 @@ async function refresh(req, res) {
       });
     }
 
-    const user = rows[0];
     const accessToken = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,
@@ -324,12 +270,9 @@ async function refresh(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: {
-        access_token: accessToken,
-        token_type: "Bearer",
-      },
+      data: { access_token: accessToken, token_type: "Bearer" },
     });
-  } catch (err) {
+  } catch {
     return res.status(401).json({
       success: false,
       message: "Refresh Token이 만료되었습니다. 다시 로그인해주세요.",
