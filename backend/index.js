@@ -1,12 +1,15 @@
 require("dotenv").config();
+const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
 const authRoutes = require("./routes/auth");
 const chatRoutes = require("./routes/chat");
+const initSocket = require("./config/socket");
 
 const app = express();
+const server = http.createServer(app);
 const port = process.env.PORT || 3000;
 
 app.use(cors());
@@ -20,6 +23,8 @@ app.get("/", (_req, res) => {
   res.json({ success: true });
 });
 
-app.listen(port, () => {
+initSocket(server);
+
+server.listen(port, () => {
   console.log(`server is listening at localhost:${port}`);
 });
