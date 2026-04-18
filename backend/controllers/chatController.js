@@ -268,4 +268,45 @@ async function saveMessage(req, res) {
   }
 }
 
-module.exports = { getChatList, createChatRoom, getMessages, saveMessage };
+async function markAsRead(req, res) {
+  const userId = req.user.id;
+  const chatRoomId = parseInt(req.params.id);
+
+  try {
+    // 채팅방 참여자 확인
+    const [roomRows] = await pool.query(
+      "SELECT id FROM chat_rooms WHERE id = ? AND (buyer_id = ? OR seller_id = ?)",
+      [chatRoomId, userId, userId]
+    );
+    if (roomRows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "채팅방에 접근할 권한이 없습니다.",
+        error: { code: "FORBIDDEN" },
+      });
+    }
+
+    // 상대방이 보낸 읽지 않은 메시지를 읽음 처리
+    const [result] = await pool.query(
+      `UPDATE messages
+       SET is_read = TRUE
+       WHERE chat_room_id = ? AND sender_id != ? AND is_read = FALSE`,
+      [chatRoomId, userId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "메시지를 읽음 처리했습니다.",
+      data: { updated_count: result.affectedRows },
+    });
+  } catch (err) {
+    console.error("읽음 처리 오류:", err);
+    return res.status(500).json({
+      success: false,
+      message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      error: { code: "SERVER_ERROR" },
+    });
+  }
+}
+
+module.exports = { getChatList, createChatRoom, getMessages, saveMessage, markAsRead };
