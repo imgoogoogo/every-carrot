@@ -208,4 +208,64 @@ async function getMessages(req, res) {
   }
 }
 
-module.exports = { getChatList, createChatRoom, getMessages };
+async function saveMessage(req, res) {
+  const userId = req.user.id;
+  const chatRoomId = parseInt(req.params.id);
+  const { content } = req.body;
+
+  if (!content || typeof content !== "string" || content.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "메시지 내용을 입력해주세요.",
+      error: { code: "MISSING_CONTENT" },
+    });
+  }
+
+  if (content.length > 1000) {
+    return res.status(400).json({
+      success: false,
+      message: "메시지는 최대 1000자까지 입력 가능합니다.",
+      error: { code: "CONTENT_TOO_LONG" },
+    });
+  }
+
+  try {
+    // 채팅방 참여자 확인
+    const [roomRows] = await pool.query(
+      "SELECT id FROM chat_rooms WHERE id = ? AND (buyer_id = ? OR seller_id = ?)",
+      [chatRoomId, userId, userId]
+    );
+    if (roomRows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "채팅방에 접근할 권한이 없습니다.",
+        error: { code: "FORBIDDEN" },
+      });
+    }
+
+    // 메시지 저장
+    const [result] = await pool.query(
+      "INSERT INTO messages (chat_room_id, sender_id, content) VALUES (?, ?, ?)",
+      [chatRoomId, userId, content.trim()]
+    );
+
+    const [[message]] = await pool.query(
+      "SELECT id, chat_room_id, sender_id, content, is_read, created_at FROM messages WHERE id = ?",
+      [result.insertId]
+    );
+
+    return res.status(201).json({
+      success: true,
+      data: message,
+    });
+  } catch (err) {
+    console.error("메시지 저장 오류:", err);
+    return res.status(500).json({
+      success: false,
+      message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      error: { code: "SERVER_ERROR" },
+    });
+  }
+}
+
+module.exports = { getChatList, createChatRoom, getMessages, saveMessage };
