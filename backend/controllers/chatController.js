@@ -154,4 +154,58 @@ async function createChatRoom(req, res) {
   }
 }
 
-module.exports = { getChatList, createChatRoom };
+async function getMessages(req, res) {
+  const userId = req.user.id;
+  const chatRoomId = parseInt(req.params.id);
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+  const offset = (page - 1) * limit;
+
+  try {
+    // 채팅방 참여자 확인
+    const [roomRows] = await pool.query(
+      "SELECT id FROM chat_rooms WHERE id = ? AND (buyer_id = ? OR seller_id = ?)",
+      [chatRoomId, userId, userId]
+    );
+    if (roomRows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "채팅방에 접근할 권한이 없습니다.",
+        error: { code: "FORBIDDEN" },
+      });
+    }
+
+    // 전체 메시지 수 조회
+    const [[{ total }]] = await pool.query(
+      "SELECT COUNT(*) AS total FROM messages WHERE chat_room_id = ?",
+      [chatRoomId]
+    );
+
+    // 메시지 목록 조회
+    const [messages] = await pool.query(
+      `SELECT id, sender_id, content, is_read, created_at
+       FROM messages
+       WHERE chat_room_id = ?
+       ORDER BY created_at ASC
+       LIMIT ? OFFSET ?`,
+      [chatRoomId, limit, offset]
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        messages,
+        pagination: { total, page, limit },
+      },
+    });
+  } catch (err) {
+    console.error("메시지 조회 오류:", err);
+    return res.status(500).json({
+      success: false,
+      message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      error: { code: "SERVER_ERROR" },
+    });
+  }
+}
+
+module.exports = { getChatList, createChatRoom, getMessages };
