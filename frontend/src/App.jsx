@@ -1,19 +1,13 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import HomePage from "./pages/HomePage";
-import ProductFormPage from "./pages/ProductFormPage";
-import ChatListPage from "./pages/ChatListPage";
-import ChatRoomPage from "./pages/ChatRoomPage";
+import "./App.css";
 
-export default function App() {
+function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/products/new" element={<ProductFormPage />} />
-        <Route path="/products/:id/edit" element={<ProductFormPage />} />
-        <Route path="/chats" element={<ChatListPage />} />
-        <Route path="/chats/:id" element={<ChatRoomPage />} />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <div className="flex items-center justify-center h-[100px] bg-gray-100">
+        <h1 className="text-3xl font-bold text-blue-500">Hello, world!</h1>
+      </div>
+    </>
   );
 }
+
+export default App;
