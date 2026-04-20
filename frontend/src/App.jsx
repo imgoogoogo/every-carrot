@@ -7,16 +7,22 @@ import MyPage from "./pages/MyPage";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LoginPage />} /> 
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/main" element={<MainPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/products/:id" element={<ProductDetailPage />} />
-        <Route path="/mypage" element={<MyPage />} />
-      </Routes>
-    </BrowserRouter>
+    <div className="flex justify-center h-screen overflow-hidden">
+      
+      <div className="w-full max-w-[430px] bg-white shadow-2xl relative flex flex-col h-full overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/main" element={<MainPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/mypage" element={<MyPage />} />
+          </Routes>
+        </BrowserRouter>
+      </div>
+      
+    </div>
   );
 }
 
