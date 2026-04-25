@@ -13,9 +13,9 @@ export default function MyPage() {
   ];
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen font-app flex flex-col pb-[70px]">
+    <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen font-app flex flex-col pb-[80px]">
       
-      <div className="w-full px-[18px] py-[14px] font-bold text-[17px] border-b border-[#eee] sticky top-0 bg-white z-[100] text-center">
+      <div className="w-full px-[18px] py-[16px] font-bold text-[17px] border-b border-[#eee] sticky top-0 bg-white z-[100] text-center">
         마이페이지
       </div>
       
@@ -36,56 +36,55 @@ export default function MyPage() {
           </button>
         </div>
 
-        {/* Menu List */}
         <div className="border-t-[8px] border-[#f9f9f9]">
           <div className="px-[18px] py-4 border-b border-[#f5f5f5] flex justify-between items-center cursor-pointer active:bg-gray-50">
             <span className="font-medium text-[#333]">판매내역</span>
-            <span className="text-[#ccc]">{">"}</span>
+            <span className="text-[#ccc] text-[18px]">{"〉"}</span>
           </div>
           <div className="px-[18px] py-4 border-b border-[#f5f5f5] flex justify-between items-center cursor-pointer active:bg-gray-50">
             <span className="font-medium text-[#333]">구매내역</span>
-            <span className="text-[#ccc]">{">"}</span>
+            <span className="text-[#ccc] text-[18px]">{"〉"}</span>
           </div>
           <div className="px-[18px] py-4 border-b border-[#f5f5f5] flex justify-between items-center cursor-pointer active:bg-gray-50">
             <span className="font-medium text-[#333]">관심목록</span>
-            <span className="text-[#ccc]">{">"}</span>
+            <span className="text-[#ccc] text-[18px]">{"〉"}</span>
           </div>
           <div 
             onClick={() => navigate("/login")}
-            className="px-[18px] py-4 flex justify-between items-center cursor-pointer active:bg-gray-50 text-red-500"
+            className="px-[18px] py-4 flex justify-between items-center cursor-pointer active:bg-gray-50 text-[#FF4D4F]"
           >
             <span className="font-medium">로그아웃</span>
           </div>
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#eee] flex justify-around pt-2 pb-4 z-[100]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#eee] flex justify-around pt-2.5 pb-6 z-[110] shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         {tabs.map((tab) => (
           <button
             key={tab.name}
-            onClick={() => {
-              setActiveTab(tab.name);
-              navigate(tab.path);
-            }}
-            className="flex flex-col items-center gap-1 px-4 relative flex-1"
+            onClick={() => { setActiveTab(tab.name); navigate(tab.path); }}
+            className="flex flex-col items-center gap-1.5 px-4 relative flex-1 active:scale-95 transition-transform"
           >
+
             <svg 
-              width="22" 
-              height="22" 
+              width="24" 
+              height="24" 
               fill="none" 
-              stroke={activeTab === tab.name ? "#5B2C8E" : "#aaa"} 
-              strokeWidth="2" 
+              stroke={activeTab === tab.name ? "#555" : "#ccc"} 
+              strokeWidth="2.2" 
               viewBox="0 0 24 24"
             >
               <path d={tab.icon} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className={`text-[11px] ${activeTab === tab.name ? "font-bold text-brand" : "font-medium text-[#aaa]"}`}>
+
+            <span className={`text-[13px] ${activeTab === tab.name ? "font-bold text-brand-red" : "font-medium text-[#bbb]"}`}>
               {tab.name}
             </span>
+      
+            {tab.name === "채팅" && <span className="absolute top-[-2px] right-[28%] w-[15px] h-[15px] bg-[#FF4D4F] rounded-full text-[9px] font-bold text-white flex items-center justify-center border border-white">1</span>}
           </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+             ))}
+            </div>
+          </div>
+        );
+      }
