@@ -44,22 +44,19 @@ export default function ProductFormPage() {
     if (!description.trim()) return alert("설명을 입력해주세요.");
 
     setSubmitting(true);
-    // TODO: API 연동 (multipart/form-data POST /api/products or PATCH /api/products/:id)
+    // TODO: API 연동 (POST /api/products or PATCH /api/products/:id)
     setTimeout(() => {
       setSubmitting(false);
-      navigate("/");
+      navigate("/main");
     }, 800);
   };
 
   return (
-    <div className="max-w-[430px] mx-auto bg-[#FAFAFA] min-h-screen font-app relative overflow-hidden flex flex-col">
+    <div className="w-full bg-[#FAFAFA] min-h-full font-app flex flex-col">
 
       {/* Header */}
       <div className="bg-white border-b border-[#eee] px-[18px] py-[14px] flex items-center gap-3 sticky top-0 z-[100]">
-        <button
-          onClick={() => navigate(-1)}
-          className="bg-transparent border-none cursor-pointer p-1 flex"
-        >
+        <button onClick={() => navigate(-1)} className="bg-transparent border-none cursor-pointer p-1 flex active:opacity-50">
           <svg width="22" height="22" fill="none" stroke="#333" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -70,8 +67,8 @@ export default function ProductFormPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className={`px-[18px] py-2 rounded-[8px] text-sm font-bold text-white transition-colors ${
-            submitting ? "bg-[#ccc] cursor-not-allowed" : "bg-brand cursor-pointer"
+          className={`px-[18px] py-2 rounded-[8px] text-sm font-bold text-white transition-all ${
+            submitting ? "bg-[#ccc] cursor-not-allowed" : "bg-brand cursor-pointer active:scale-[0.98]"
           }`}
         >
           {submitting ? "저장 중..." : isEdit ? "수정 완료" : "등록하기"}
@@ -79,21 +76,17 @@ export default function ProductFormPage() {
       </div>
 
       {/* Scroll Area */}
-      <div className="flex-1 overflow-y-auto pb-10 no-scrollbar">
+      <div className="flex-1 pb-10">
 
         {/* Image Upload */}
         <div className="bg-white px-[18px] py-5 border-b-[8px] border-[#f5f5f5]">
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="w-[90px] h-[90px] border-2 border-dashed border-[#ddd] rounded-[12px] flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-[#fafafa] relative"
+            className="w-[90px] h-[90px] border-2 border-dashed border-[#ddd] rounded-[12px] flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-[#fafafa] relative active:opacity-70"
           >
             {imagePreview ? (
               <>
-                <img
-                  src={imagePreview}
-                  alt="미리보기"
-                  className="w-full h-full object-cover"
-                />
+                <img src={imagePreview} alt="미리보기" className="w-full h-full object-cover" />
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
@@ -119,13 +112,7 @@ export default function ProductFormPage() {
               </>
             )}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageChange}
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
         </div>
 
         {/* Title */}
@@ -136,7 +123,7 @@ export default function ProductFormPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={50}
-            className="w-full border-none outline-none text-base text-[#222] bg-transparent"
+            className="w-full border-none outline-none text-base text-[#222] bg-transparent placeholder:text-[#bbb]"
           />
         </div>
 
@@ -165,13 +152,10 @@ export default function ProductFormPage() {
             placeholder="가격 (원)"
             value={price}
             onChange={handlePriceInput}
-            className="flex-1 border-none outline-none text-base text-[#222] bg-transparent"
+            className="flex-1 border-none outline-none text-base text-[#222] bg-transparent placeholder:text-[#bbb]"
           />
           {price && (
-            <button
-              onClick={() => setPrice("")}
-              className="bg-transparent border-none cursor-pointer p-[2px]"
-            >
+            <button onClick={() => setPrice("")} className="bg-transparent border-none cursor-pointer p-[2px] active:opacity-50">
               <svg width="16" height="16" fill="none" stroke="#bbb" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9" />
                 <path d="M15 9l-6 6M9 9l6 6" strokeLinecap="round" />
@@ -188,29 +172,22 @@ export default function ProductFormPage() {
             onChange={(e) => setDescription(e.target.value)}
             maxLength={1000}
             rows={10}
-            className="w-full border-none outline-none text-[15px] text-[#222] bg-transparent resize-none leading-relaxed"
+            className="w-full border-none outline-none text-[15px] text-[#222] bg-transparent resize-none leading-relaxed placeholder:text-[#bbb]"
           />
-          <div className="text-right text-xs text-[#ccc] mt-1">
-            {description.length}/1000
-          </div>
+          <div className="text-right text-xs text-[#ccc] mt-1">{description.length}/1000</div>
         </div>
       </div>
 
       {/* Bottom Bar */}
       <div className="bg-white border-t border-[#eee] px-[18px] py-3 flex items-center gap-4">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-transparent border-none cursor-pointer p-[6px] flex items-center gap-1 text-brand"
-        >
+        <button onClick={() => fileInputRef.current?.click()} className="bg-transparent border-none cursor-pointer p-[6px] flex items-center gap-1 text-brand active:opacity-70">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
             <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx="12" cy="13" r="3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="text-[13px] font-semibold">{image ? "1" : "0"}/1</span>
         </button>
-
         <div className="flex-1" />
-
         <label className="flex items-center gap-[6px] cursor-pointer">
           <span className="text-[13px] text-[#555] font-medium">가격 제안 받기</span>
           <div className="w-[42px] h-6 bg-brand rounded-[12px] relative">
