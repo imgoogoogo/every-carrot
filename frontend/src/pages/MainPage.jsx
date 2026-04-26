@@ -1,20 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { getProducts } from "../api(test)/productService";
 
 const CATEGORIES = ["전체", "전자기기", "도서", "의류/패션", "생활용품", "기타"];
 
-const PRODUCTS = [
-  { id: 1, title: "맥북 에어 M2 2022 스그", department: "컴퓨터공학과", time: "3분 전", price: "850,000", hearts: 12, status: "판매중", category: "전자기기", image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300" },
-  { id: 2, title: "운영체제 10판 교재 (깨끗)", department: "컴퓨터공학과", time: "25분 전", price: "15,000", hearts: 4, status: "판매중", category: "도서", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300" },
-  { id: 3, title: "자취 미니 전기밥솥 3인용", department: "경영학과", time: "1시간 전", price: "25,000", hearts: 8, status: "예약중", category: "생활용품", image: "https://images.unsplash.com/photo-1585515320310-259814833e62?w=300" },
-  { id: 4, title: "나이키 에어포스1 270mm", department: "전자공학과", time: "2시간 전", price: "45,000", hearts: 15, status: "판매중", category: "의류/패션", image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300" },
-  { id: 5, title: "아이패드 10세대 + 애플펜슬", department: "디자인학과", time: "3시간 전", price: "380,000", hearts: 22, status: "판매중", category: "전자기기", image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=300" },
-  { id: 6, title: "이케아 책상 스탠딩 겸용", department: "건축학과", time: "5시간 전", price: "55,000", hearts: 6, status: "판매완료", category: "생활용품", image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=300" },
-];
-
 const StatusBadge = ({ status }) => {
   const bgColors = { 
-    판매중: "bg-brand",    
+    판매중: "bg-brand",     
     예약중: "bg-brand-red", 
     판매완료: "bg-[#ccc]" 
   };
@@ -36,6 +28,9 @@ export default function MainPage() {
   const [activeCategory, setActiveCategory] = useState("전체");
   const [activeTab, setActiveTab] = useState("홈");
 
+  const [products, setProducts] = useState([]); 
+  const [isLoading, setIsLoading] = useState(true);
+
   const scrollRef = useRef(null);
   const [isDrag, setIsDrag] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -51,7 +46,27 @@ export default function MainPage() {
     scrollRef.current.scrollLeft = startX - e.pageX;
   };
 
-  const filtered = PRODUCTS.filter(p => activeCategory === "전체" || p.category === activeCategory);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        
+        const params = {
+          category_id: activeCategory === "전체" ? null : CATEGORIES.indexOf(activeCategory),
+          sort: "latest"
+        };
+        
+        const data = await getProducts(params);
+        setProducts(data.products); 
+      } catch (err) {
+        console.error("물품 목록 로드 실패:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [activeCategory]);
 
   const tabs = [
     { name: "홈", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4", path: "/main" },
@@ -93,37 +108,48 @@ export default function MainPage() {
         ))}
       </div>
 
-      {/* Product List */}
       <div className="flex-1 overflow-y-auto">
-        {filtered.map((product) => (
-          <div
-            key={product.id}
-            onClick={() => navigate(`/products/${product.id}`)}
-            className={`flex gap-[16px] px-[18px] py-5 bg-white border-b border-[#f5f5f5] cursor-pointer active:bg-gray-50 transition-colors ${product.status === "판매완료" ? "opacity-60" : ""}`}
-          >
-            <div className="relative shrink-0">
-              <img 
-                src={product.image} 
-                alt={product.title} 
-                className="w-[115px] h-[115px] rounded-[12px] object-cover bg-[#f9f9f9]" />
-              <div className="absolute top-[2px] left-[7px]"> <StatusBadge status={product.status} /> </div>
-            </div>
-            
-            <div className="flex flex-1 flex-col justify-between py-1 items-start text-left">
-              <div className="w-full">
-                <div className="text-[16px] font-bold text-[#222] truncate mb-1">{product.title}</div>
-                <div className="text-[12.5px] text-[#999]">{product.department} · {product.time}</div>
+        {isLoading ? (
+          <div className="py-20 text-center text-[#999]">물품을 불러오는 중입니다...</div>
+        ) : products.length > 0 ? (
+          products.map((product) => (
+            <div
+              key={product.id}
+              onClick={() => navigate(`/products/${product.id}`)}
+              className={`flex gap-[16px] px-[18px] py-5 bg-white border-b border-[#f5f5f5] cursor-pointer active:bg-gray-50 transition-colors ${product.status === "판매완료" ? "opacity-60" : ""}`}
+            >
+              <div className="relative shrink-0">
+                <img 
+                  src={product.image_url} 
+                  alt={product.title} 
+                 className="w-[115px] h-[115px] rounded-[12px] object-cover bg-[#f9f9f9]" 
+                />
+                <div className="absolute top-[2px] left-[7px]"> <StatusBadge status={product.status} /> </div>
               </div>
-              <div className="text-[18px] font-black text-brand tracking-tight">{product.price}원</div>
-              <div className="flex justify-end items-center gap-1 w-full mt-1">
-                <svg width="14" height="14" fill="none" stroke="#bbb" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                <span className="text-[12px] text-[#bbb] font-medium">{product.hearts}</span>
+              
+              <div className="flex flex-1 flex-col justify-between py-1 items-start text-left">
+                <div className="w-full">
+                  <div className="text-[16px] font-bold text-[#222] truncate mb-1">{product.title}</div>
+                  <div className="text-[12.5px] text-[#999]">
+                    {product.seller?.nickname} · {new Date(product.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="text-[18px] font-black text-brand tracking-tight">
+                  {product.price?.toLocaleString()}원 
+                </div>
+                <div className="flex justify-end items-center gap-1 w-full mt-1">
+                  <svg width="14" height="14" fill="none" stroke="#bbb" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-[12px] text-[#bbb] font-medium">0</span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="py-20 text-center text-[#999]">등록된 물품이 없습니다.</div>
+        )}
       </div>
-
 
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#eee] flex justify-around pt-2.5 pb-6 z-[110] shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         {tabs.map((tab) => (
@@ -132,7 +158,6 @@ export default function MainPage() {
             onClick={() => { setActiveTab(tab.name); navigate(tab.path); }}
             className="flex flex-col items-center gap-1.5 px-4 relative flex-1 active:scale-95 transition-transform"
           >
-
             <svg 
               width="24" 
               height="24" 
@@ -143,15 +168,13 @@ export default function MainPage() {
             >
               <path d={tab.icon} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-
             <span className={`text-[13px] ${activeTab === tab.name ? "font-bold text-brand-red" : "font-medium text-[#bbb]"}`}>
               {tab.name}
             </span>
-      
             {tab.name === "채팅" && <span className="absolute top-[-2px] right-[28%] w-[15px] h-[15px] bg-[#FF4D4F] rounded-full text-[9px] font-bold text-white flex items-center justify-center border border-white">1</span>}
           </button>
-             ))}
-            </div>
+        ))}
+      </div>
     </div>
   );
 }
