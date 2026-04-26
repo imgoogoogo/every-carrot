@@ -10,7 +10,7 @@ const createProduct = async (req, res) => {
     if (!title || !description || price === undefined || !category_id) {
       return res.status(400).json({
         success : false,
-        message : "필수 항목을 모두 입력해주세요.",
+        message : "필수 항목을 모두 입력해주세요. (제목, 설명, 가격, 카테고리)",
         error : { code : "MISSING_REQUIRED_FIELDS" },
       });
     }
@@ -31,9 +31,7 @@ const createProduct = async (req, res) => {
       });
     }
 
-    const imageUrl = imageFile
-      ? `${req.protocol}://${req.get("host")}/uploads/products/${imageFile.filename}`
-      : null;
+    const imageUrl = imageFile ? `/uploads/products/${imageFile.filename}` : null;
 
     const [result] = await pool.execute(
       "INSERT INTO products (title, description, price, category_id, seller_id, image_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)",

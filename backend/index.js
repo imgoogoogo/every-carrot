@@ -1,23 +1,36 @@
-
 require("dotenv").config();
-const app = require("./app");
-const pool = require("./config/db");
+const http = require("http");
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const path = require("path");
 
+const initSocket = require("./config/socket");
+
+const app = express();
+const server = http.createServer(app);
 const port = process.env.PORT || 3000;
 
-const startServer = async () => {
-  try {
-    const connection = await pool.getConnection();
-    console.log("MySQL connected successfully");
-    connection.release();
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true,
+}));
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-    app.listen(port, () => {
-      console.log(`server is listening at localhost:${port}`);
-    });
-  } catch (error) {
-    console.error("Failed to connect to MySQL:", error.message);
-    process.exit(1);
-  }
-};
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-startServer();
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/chats", require("./routes/chat"));
+app.use("/api/products", require("./routes/products"));
+
+app.get("/", (_req, res) => {
+  res.json({ success: true });
+});
+
+initSocket(server);
+
+server.listen(port, () => {
+  console.log(`server is listening at localhost:${port}`);
+});

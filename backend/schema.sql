@@ -1,70 +1,135 @@
-CREATE DATABASE IF NOT EXISTS every_carrot DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE every_carrot;
-SET NAMES utf8mb4;
-SET sql_mode = '';
+-- =============================================================
+--  Campus Marketplace — 스키마 (DDL)
+--  MySQL 8.0 / MariaDB 10.3+
+-- =============================================================
 
-CREATE TABLE IF NOT EXISTS users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
-  nickname VARCHAR(30) NOT NULL UNIQUE,
-  department VARCHAR(100),
-  profile_image VARCHAR(500),
-  is_verified TINYINT(1) DEFAULT 0,
-  refresh_token TEXT,
-  created_at DATETIME DEFAULT NOW()
-);
+CREATE DATABASE IF NOT EXISTS campus_marketplace
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS email_verifications (
-  email VARCHAR(255) PRIMARY KEY,
-  code VARCHAR(6) NOT NULL,
-  expires_at DATETIME NOT NULL,
-  verified TINYINT(1) DEFAULT 0,
-  created_at DATETIME DEFAULT NOW()
-);
+USE campus_marketplace;
 
-CREATE TABLE IF NOT EXISTS categories (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(50) NOT NULL
-);
 
-INSERT IGNORE INTO categories (id, name) VALUES
-  (1, '전자기기'), (2, '의류'), (3, '도서'), (4, '생활용품'), (5, '기타');
+-- -------------------------------------------------------------
+--  1. users
+-- -------------------------------------------------------------
+CREATE TABLE users (
+    id            INT          NOT NULL AUTO_INCREMENT,
+    email         VARCHAR(100) NOT NULL,
+    password      VARCHAR(255) NOT NULL,
+    nickname      VARCHAR(30)  NOT NULL,
+    department    VARCHAR(50)  NULL,
+    profile_image VARCHAR(255) NULL,
+    is_verified   BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at    DATETIME     NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_users_email    (email),
+    UNIQUE KEY uq_users_nickname (nickname)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS products (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(100) NOT NULL,
-  description TEXT NOT NULL,
-  price INT NOT NULL DEFAULT 0,
-  status VARCHAR(20) NOT NULL DEFAULT '판매중',
-  category_id INT,
-  seller_id INT NOT NULL,
-  image_url VARCHAR(500),
-  created_at DATETIME DEFAULT NOW(),
-  updated_at DATETIME DEFAULT NOW(),
-  FOREIGN KEY (category_id) REFERENCES categories(id),
-  FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE
-);
 
-CREATE TABLE IF NOT EXISTS chat_rooms (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  product_id INT NOT NULL,
-  buyer_id INT NOT NULL,
-  seller_id INT NOT NULL,
-  created_at DATETIME DEFAULT NOW(),
-  UNIQUE KEY unique_chat (product_id, buyer_id, seller_id),
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-  FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- -------------------------------------------------------------
+--  2. categories
+-- -------------------------------------------------------------
+CREATE TABLE categories (
+    id   INT         NOT NULL AUTO_INCREMENT,
+    name VARCHAR(20) NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS messages (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  chat_room_id INT NOT NULL,
-  sender_id INT NOT NULL,
-  content TEXT NOT NULL,
-  is_read TINYINT(1) DEFAULT 0,
-  created_at DATETIME DEFAULT NOW(),
-  FOREIGN KEY (chat_room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
-  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
-);
+
+-- -------------------------------------------------------------
+--  3. products  (users, categories 다음에 생성)
+-- -------------------------------------------------------------
+CREATE TABLE products (
+    id          INT          NOT NULL AUTO_INCREMENT,
+    seller_id   INT          NOT NULL,
+    title       VARCHAR(100) NOT NULL,
+    description TEXT         NOT NULL,
+    price       INT          NOT NULL,
+    category_id INT          NOT NULL,
+    status      ENUM('판매중','예약중','판매완료') NOT NULL DEFAULT '판매중',
+    image_url   VARCHAR(255) NULL,
+    created_at  DATETIME     NOT NULL DEFAULT NOW(),
+    updated_at  DATETIME     NOT NULL DEFAULT NOW() ON UPDATE NOW(),
+    PRIMARY KEY (id),
+    CONSTRAINT fk_products_seller   FOREIGN KEY (seller_id)   REFERENCES users(id)      ON DELETE CASCADE,
+    CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -------------------------------------------------------------
+--  4. chat_rooms  (users, products 다음에 생성)
+-- -------------------------------------------------------------
+CREATE TABLE chat_rooms (
+    id         INT      NOT NULL AUTO_INCREMENT,
+    product_id INT      NOT NULL,
+    buyer_id   INT      NOT NULL,
+    seller_id  INT      NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_chat_rooms (product_id, buyer_id, seller_id),
+    CONSTRAINT fk_chatrooms_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT fk_chatrooms_buyer   FOREIGN KEY (buyer_id)   REFERENCES users(id)    ON DELETE CASCADE,
+    CONSTRAINT fk_chatrooms_seller  FOREIGN KEY (seller_id)  REFERENCES users(id)    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -------------------------------------------------------------
+--  5. messages  (chat_rooms, users 다음에 생성)
+-- -------------------------------------------------------------
+CREATE TABLE messages (
+    id           INT      NOT NULL AUTO_INCREMENT,
+    chat_room_id INT      NOT NULL,
+    sender_id    INT      NOT NULL,
+    content      TEXT     NOT NULL,
+    is_read      BOOLEAN  NOT NULL DEFAULT FALSE,
+    created_at   DATETIME NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    CONSTRAINT fk_messages_chatroom FOREIGN KEY (chat_room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+    CONSTRAINT fk_messages_sender   FOREIGN KEY (sender_id)    REFERENCES users(id)      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -------------------------------------------------------------
+--  6. email_verifications
+-- -------------------------------------------------------------
+CREATE TABLE email_verifications (
+    id         INT          NOT NULL AUTO_INCREMENT,
+    email      VARCHAR(100) NOT NULL,
+    code       VARCHAR(6)   NOT NULL,
+    expires_at DATETIME     NOT NULL,
+    created_at DATETIME     NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    KEY idx_email_verifications_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -------------------------------------------------------------
+--  7. 인덱스
+-- -------------------------------------------------------------
+CREATE INDEX idx_products_status     ON products (status);
+CREATE INDEX idx_products_category   ON products (category_id);
+CREATE INDEX idx_products_seller     ON products (seller_id);
+CREATE INDEX idx_products_price      ON products (price);
+CREATE INDEX idx_products_created_at ON products (created_at DESC);
+
+CREATE INDEX idx_messages_chatroom_created ON messages (chat_room_id, created_at);
+CREATE INDEX idx_messages_is_read          ON messages (chat_room_id, is_read);
+
+CREATE INDEX idx_chatrooms_buyer  ON chat_rooms (buyer_id);
+CREATE INDEX idx_chatrooms_seller ON chat_rooms (seller_id);
+
+
+-- -------------------------------------------------------------
+--  8. 카테고리 기초 데이터
+-- -------------------------------------------------------------
+INSERT INTO categories (name) VALUES
+    ('전자기기'),
+    ('의류/잡화'),
+    ('도서/교재'),
+    ('스포츠/레저'),
+    ('가구/인테리어'),
+    ('식품/음료'),
+    ('뷰티/미용'),
+    ('기타');

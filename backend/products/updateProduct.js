@@ -51,9 +51,8 @@ const updateProduct = async (req, res) => {
     if (price !== undefined) {updates.push("price = ?"); values.push(Number(price));}
     if (category_id !== undefined) {updates.push("category_id = ?"); values.push(Number(category_id));}
     if (imageFile) {
-      const url = `${req.protocol}://${req.get("host")}/uploads/products/${imageFile.filename}`;
       updates.push("image_url = ?");
-      values.push(url);
+      values.push(`/uploads/products/${imageFile.filename}`);
     }
 
     if (updates.length === 0) {
