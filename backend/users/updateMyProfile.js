@@ -39,9 +39,8 @@ const updateMyProfile = async (req, res) => {
     }
 
     if (profileImageFile) {
-      const imageUrl = `${req.protocol}://${req.get("host")}/uploads/profiles/${profileImageFile.filename}`;
       updates.push("profile_image = ?");
-      values.push(imageUrl);
+      values.push(`/uploads/profiles/${profileImageFile.filename}`);
     }
 
     if (updates.length === 0) {
