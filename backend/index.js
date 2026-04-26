@@ -24,6 +24,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/chats", require("./routes/chat"));
 app.use("/api/products", require("./routes/products"));
+app.use("/api/users", require("./routes/users"));
 
 app.get("/", (_req, res) => {
   res.json({ success: true });
