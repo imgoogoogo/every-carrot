@@ -4,6 +4,7 @@ import RegisterPage from "./pages/RegisterPage";
 import MainPage from "./pages/MainPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import MyPage from "./pages/MyPage";
+import MyProductsPage from "./pages/MyProductsPage";
 import ChatListPage from "./pages/ChatListPage";
 import ChatRoomPage from "./pages/ChatRoomPage";
 import ProductFormPage from "./pages/ProductFormPage";
@@ -11,7 +12,7 @@ import ProductFormPage from "./pages/ProductFormPage";
 function App() {
   return (
     <div className="flex justify-center h-screen overflow-hidden">
-      <div className="w-full max-w-[430px] bg-white shadow-2xl relative flex flex-col h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="w-full max-w-[430px] bg-white shadow-2xl relative flex flex-col h-full overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LoginPage />} />
@@ -21,6 +22,7 @@ function App() {
             <Route path="/write" element={<ProductFormPage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/mypage" element={<MyPage />} />
+            <Route path="/mypage/products" element={<MyProductsPage />} />
             <Route path="/chat" element={<ChatListPage />} />
             <Route path="/chat/:id" element={<ChatRoomPage />} />
           </Routes>
