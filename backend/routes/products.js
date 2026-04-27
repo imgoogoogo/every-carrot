@@ -10,11 +10,11 @@ const deleteProduct = require("../products/deleteProduct");
 const updateProductStatus = require("../products/updateProductStatus");
 
 router.get("/", getProducts);
-router.post("/", authenticate, uploadProduct.single("images", 5), createProduct);
+router.post("/", authenticate, uploadProduct.array("images", 5), createProduct);
 // /me 는 반드시 /:id 보다 앞에 선언해야 함
 router.get("/me", authenticate, getMyProducts);
 router.get("/:id", getProduct);
-router.put("/:id", authenticate, uploadProduct.single("images", 5), updateProduct);
+router.put("/:id", authenticate, uploadProduct.array("images", 5), updateProduct);
 router.delete("/:id", authenticate, deleteProduct);
 router.patch("/:id/status", authenticate, updateProductStatus);
 
