@@ -13,19 +13,21 @@ export default function MyProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
 useEffect(() => {
-    const fetchMyProducts = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getMyProducts(); 
-        setProducts(response.products || response); 
-      } catch (err) {
-        console.error("내 물품 로드 실패:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchMyProducts();
-  }, []);
+  const fetchMyProducts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getMyProducts(); 
+      
+      setProducts(response.products || []); 
+    } catch (err) {
+      console.error("내 물품 로드 실패:", err);
+      setProducts([]); 
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  fetchMyProducts();
+}, []);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-400">목록 불러오는 중...</div>;
 

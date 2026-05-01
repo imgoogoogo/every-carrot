@@ -39,11 +39,15 @@ export const login = async (email, password) => {
   } catch (error) {
     throw error.response?.data || error.message;
   }
+};  
+
+export const logout = () => {
+  localStorage.removeItem("token");
 };
 
 
-/** 테스트용 코드(테스트완)
- export const sendVerification = async (email) => {
+ // 테스트용 코드(테스트완)
+ /* export const sendVerification = async (email) => {
   console.log("테스트 - 인증번호 발송 시뮬레이션:", email);
   return new Promise(resolve => setTimeout(() => resolve({ success: true }), 800));
 };

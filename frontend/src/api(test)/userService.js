@@ -20,14 +20,16 @@ export const updateUserProfile = async (formData) => {
   } catch (error) {
     throw error.response?.data || error.message;
   }
-};
+}; 
 
 
-/* 테스트용 코드(테스트완)
+// 테스트용 코드(테스트완)
+/*
  export const getUserProfile = async () => {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
+        id: 1,
         nickname: "이승빈",
         department: "컴퓨터공학과",
       });

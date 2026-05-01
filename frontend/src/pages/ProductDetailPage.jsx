@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom"; 
-import { getProductById } from "../api(test)/productService"; 
+import { getProductById, deleteProduct } from "../api(test)/productService"; 
+import { getUserProfile } from "../api(test)/userService";
 
 const StatusBadge = ({ status }) => {
   const bgColors = {
@@ -20,15 +21,21 @@ export default function ProductDetailPage() {
   const { id } = useParams(); 
   
   const [product, setProduct] = useState(null); 
+  const [me, setMe] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [showMenu, setShowMenu] = useState(false); 
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         setIsLoading(true);
-        const data = await getProductById(id);
-        setProduct(data);
+        const [productData, myData] = await Promise.all([
+          getProductById(id),
+          getUserProfile()
+        ]);
+        setProduct(productData);
+        setMe(myData);
       } catch (err) {
         console.error("상세 정보 로드 실패:", err);
         alert("존재하지 않는 물품이거나 삭제된 물품입니다.");
@@ -41,6 +48,22 @@ export default function ProductDetailPage() {
     fetchDetail();
   }, [id, navigate]);
 
+const isMyPost = product?.seller?.id === me?.id;
+
+const handleDelete = async () => {
+    setShowMenu(false); 
+    
+    if (!window.confirm("정말 이 게시글을 삭제하시겠습니까?")) return;
+    
+    try {
+      await deleteProduct(id);
+      alert("삭제되었습니다.");
+      navigate(-1); 
+    } catch (err) {
+      alert(err.message || "삭제 권한이 없거나 오류가 발생했습니다.");
+    }
+  };
+
   if (isLoading) return (
     <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen flex items-center justify-center">
       <div className="text-gray-400">물품 정보를 불러오는 중...</div>
@@ -52,17 +75,49 @@ export default function ProductDetailPage() {
   return (
     <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen flex flex-col relative font-app pb-[80px]">
       
-      <div className="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-[100] border-b border-[#eee] w-full">
+      {showMenu && (
+        <div 
+          className="fixed inset-0 z-[105]" 
+          onClick={() => setShowMenu(false)} 
+        />
+      )}
+
+      <div className="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-[110] border-b border-[#eee] w-full">
         <button onClick={() => navigate(-1)} className="p-1 active:opacity-50">
           <svg width="22" height="22" fill="none" stroke="#333" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <button className="p-1 active:opacity-50">
-          <svg width="24" height="24" fill="none" stroke="#333" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M12 5v.01M12 12v.01M12 19v.01" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+
+        {isMyPost && (
+            <div className="relative">
+              <button 
+                onClick={() => setShowMenu(!showMenu)} 
+                className="p-1 active:opacity-50"
+              >
+                <svg width="24" height="24" fill="none" stroke="#333" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M12 5v.01M12 12v.01M12 19v.01" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-[100px] bg-white border border-[#eee] rounded-[8px] shadow-xl z-[120] overflow-hidden">
+                  <button 
+                    onClick={() => navigate(`/edit/${id}`)}
+                    className="w-full py-2.5 text-center text-[14.5px] text-[#222] hover:bg-gray-50 border-b border-[#eee] active:bg-gray-100"
+                  >
+                    수정하기
+                  </button>
+                  <button 
+                    onClick={handleDelete}
+                    className="w-full py-2.5 text-center text-[14.5px] text-red-500 hover:bg-gray-50 active:bg-gray-100"
+                  >
+                    삭제하기
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar w-full">
@@ -108,7 +163,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#eee] px-[18px] py-3 flex items-center gap-4 z-[110] shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#eee] px-[18px] py-3 flex items-center gap-4 z-[100] shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
         <button 
           onClick={() => setIsLiked(!isLiked)}
           className="pr-4 border-r border-[#eee] active:scale-90 transition-transform"
