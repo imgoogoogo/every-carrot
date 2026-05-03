@@ -15,6 +15,10 @@ const getProducts = async (req, res) => {
       where.push("(p.title LIKE ? OR p.description LIKE ?)");
       params.push(`%${keyword}%`, `%${keyword}%`);
     }
+    if (req.query.seller_id && !isNaN(Number(req.query.seller_id))) {
+      where.push("p.seller_id = ?");
+      params.push(Number(req.query.seller_id));
+    }
     if (category_id && !isNaN(Number(category_id))) {
       where.push("p.category_id = ?");
       params.push(Number(category_id));

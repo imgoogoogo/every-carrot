@@ -35,6 +35,12 @@ function initSocket(httpServer) {
           return;
         }
         socket.join(`room_${chat_room_id}`);
+
+        // 입장 시 상대방이 보낸 메시지 읽음 처리 후 방 전체에 알림
+        const updated = await chatModel.markMessagesAsRead(chat_room_id, userId);
+        if (updated > 0) {
+          io.to(`room_${chat_room_id}`).emit("messages_read", { chat_room_id, reader_id: userId });
+        }
       } catch (err) {
         console.error("join_room 오류:", err);
         socket.emit("error", { message: "서버 오류가 발생했습니다." });

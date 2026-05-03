@@ -19,6 +19,7 @@ async function getChatList(req, res) {
         nickname: row.opponent_nickname,
         profile_image: row.opponent_profile_image,
       },
+      is_seller: Boolean(row.is_seller),
       last_message: row.last_message_content
         ? { content: row.last_message_content, created_at: row.last_message_created_at }
         : null,
@@ -187,4 +188,29 @@ async function markAsRead(req, res) {
   }
 }
 
-module.exports = { getChatList, createChatRoom, getMessages, saveMessage, markAsRead };
+async function deleteChatRoom(req, res) {
+  const userId = req.user.id;
+  const chatRoomId = parseInt(req.params.id);
+
+  try {
+    if (!(await chatModel.isParticipant(chatRoomId, userId))) {
+      return res.status(403).json({
+        success: false,
+        message: "채팅방에 접근할 권한이 없습니다.",
+        error: { code: "FORBIDDEN" },
+      });
+    }
+
+    await chatModel.deleteRoom(chatRoomId);
+    return res.status(200).json({ success: true, message: "채팅방이 삭제되었습니다." });
+  } catch (err) {
+    console.error("채팅방 삭제 오류:", err);
+    return res.status(500).json({
+      success: false,
+      message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      error: { code: "SERVER_ERROR" },
+    });
+  }
+}
+
+module.exports = { getChatList, createChatRoom, getMessages, saveMessage, markAsRead, deleteChatRoom };

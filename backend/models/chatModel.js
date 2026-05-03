@@ -11,6 +11,7 @@ async function getChatListByUserId(userId) {
        IF(cr.buyer_id = ?, su.id,            bu.id)            AS opponent_id,
        IF(cr.buyer_id = ?, su.nickname,      bu.nickname)      AS opponent_nickname,
        IF(cr.buyer_id = ?, su.profile_image, bu.profile_image) AS opponent_profile_image,
+       (cr.seller_id = ?)                                      AS is_seller,
        lm.content     AS last_message_content,
        lm.created_at  AS last_message_created_at,
        (
@@ -33,7 +34,7 @@ async function getChatListByUserId(userId) {
      WHERE cr.buyer_id = ? OR cr.seller_id = ?
      ORDER BY lm.created_at IS NULL ASC,
               lm.created_at DESC`,
-    [userId, userId, userId, userId, userId, userId]
+    [userId, userId, userId, userId, userId, userId, userId]
   );
   return rows;
 }
@@ -112,6 +113,10 @@ async function insertMessage(chatRoomId, senderId, content) {
   return message;
 }
 
+async function deleteRoom(chatRoomId) {
+  await pool.query("DELETE FROM chat_rooms WHERE id = ?", [chatRoomId]);
+}
+
 async function markMessagesAsRead(chatRoomId, userId) {
   const [result] = await pool.query(
     `UPDATE messages
@@ -131,5 +136,6 @@ module.exports = {
   countMessages,
   getMessageList,
   insertMessage,
+  deleteRoom,
   markMessagesAsRead,
 };
