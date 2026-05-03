@@ -1,12 +1,16 @@
 import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import api from "../utils/api";
 
 const CATEGORIES = [
   { id: 1, name: "전자기기" },
-  { id: 2, name: "도서" },
-  { id: 3, name: "의류/패션" },
-  { id: 4, name: "생활용품" },
-  { id: 5, name: "기타" },
+  { id: 2, name: "의류/잡화" },
+  { id: 3, name: "도서/교재" },
+  { id: 4, name: "스포츠/레저" },
+  { id: 5, name: "가구/인테리어" },
+  { id: 6, name: "식품/음료" },
+  { id: 7, name: "뷰티/미용" },
+  { id: 8, name: "기타" },
 ];
 
 export default function ProductFormPage() {
@@ -44,11 +48,26 @@ export default function ProductFormPage() {
     if (!description.trim()) return alert("설명을 입력해주세요.");
 
     setSubmitting(true);
-    // TODO: API 연동 (POST /api/products or PATCH /api/products/:id)
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      const formData = new FormData();
+      formData.append("title", title.trim());
+      formData.append("description", description.trim());
+      formData.append("price", price.replace(/,/g, ""));
+      formData.append("category_id", category);
+      if (image) formData.append("image", image);
+
+      if (isEdit) {
+        await api.put(`/api/products/${id}`, formData);
+      } else {
+        await api.post("/api/products", formData);
+      }
+
       navigate("/main");
-    }, 800);
+    } catch (err) {
+      alert(err.response?.data?.message || "저장에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

@@ -3,25 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import api from "../utils/api";
 
-const MOCK_ROOM = {
-  opponentName: "이승빈",
-  opponentDept: "컴퓨터공학과",
-  product: {
-    title: "맥북 에어 M2 2022 스그",
-    price: "850,000",
-    status: "판매중",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200&h=200&fit=crop",
-  },
-};
-
-const MOCK_MESSAGES = [
-  { id: 1, sender: "opponent", text: "안녕하세요! 맥북 아직 판매 중인가요?", time: "오후 2:14" },
-  { id: 2, sender: "me", text: "네, 판매 중이에요 😊", time: "오후 2:15" },
-  { id: 3, sender: "opponent", text: "혹시 직거래 가능하신가요?", time: "오후 2:16" },
-  { id: 4, sender: "me", text: "당연하죠! 어디가 편하세요?", time: "오후 2:17" },
-  { id: 5, sender: "opponent", text: "학생회관 카페 어떠세요?", time: "오후 2:18" },
-];
-
 function formatMsgTime(dateStr) {
   const d = new Date(dateStr);
   const hours = d.getHours();
@@ -31,16 +12,28 @@ function formatMsgTime(dateStr) {
   return `${ampm} ${h}:${minutes}`;
 }
 
+function getMyUserIdFromToken() {
+  try {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return null;
+    return JSON.parse(atob(token.split(".")[1])).id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ChatRoomPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const chatRoomId = Number(id);
 
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
-  const [roomInfo, setRoomInfo] = useState(MOCK_ROOM);
+  // ref로 관리해야 소켓 클로저 안에서도 항상 최신값 참조 가능
+  const myUserIdRef = useRef(getMyUserIdFromToken());
+
+  const [messages, setMessages] = useState([]);
+  const [roomInfo, setRoomInfo] = useState(null);
   const [input, setInput] = useState("");
   const [productBarVisible, setProductBarVisible] = useState(true);
-  const [myUserId, setMyUserId] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -54,28 +47,39 @@ export default function ChatRoomPage() {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
 
-    // 이전 메시지 로드
-    const fetchMessages = async () => {
+    const markRead = () => api.patch(`/api/chats/${chatRoomId}/read`).catch(() => {});
+
+    const fetchData = async () => {
       try {
-        const res = await api.get(`/api/chats/${chatRoomId}/messages`);
-        if (res.data?.success && Array.isArray(res.data.data?.messages)) {
-          const userId = res.data.data?.myUserId ?? null;
-          setMyUserId(userId);
-          const mapped = res.data.data.messages.map((m) => ({
+        const [chatListRes, messagesRes] = await Promise.all([
+          api.get("/api/chats"),
+          api.get(`/api/chats/${chatRoomId}/messages`),
+        ]);
+
+        if (chatListRes.data?.success) {
+          const room = chatListRes.data.data.find((r) => r.id === chatRoomId);
+          if (room) setRoomInfo(room);
+        }
+
+        if (messagesRes.data?.success) {
+          const myId = myUserIdRef.current;
+          const mapped = messagesRes.data.data.messages.map((m) => ({
             id: m.id,
-            sender: m.sender_id === userId ? "me" : "opponent",
+            sender: m.sender_id === myId ? "me" : "opponent",
             text: m.content,
             time: formatMsgTime(m.created_at),
           }));
-          if (mapped.length > 0) setMessages(mapped);
+          setMessages(mapped);
         }
-      } catch { /* 비로그인 → 목 데이터 유지 */ }
+      } catch (err) {
+        console.error("채팅방 데이터 로드 실패:", err);
+      }
+      markRead();
     };
-    fetchMessages();
+    fetchData();
 
-    // Socket.io 연결
     if (token) {
-      const socket = io("http://localhost:3000", {
+      const socket = io("/", {
         auth: { token },
         transports: ["websocket"],
       });
@@ -90,11 +94,15 @@ export default function ChatRoomPage() {
           ...prev,
           {
             id: msg.id,
-            sender: msg.sender_id === myUserId ? "me" : "opponent",
+            sender: msg.sender_id === myUserIdRef.current ? "me" : "opponent",
             text: msg.content,
             time: formatMsgTime(msg.created_at),
           },
         ]);
+        // 채팅방 안에 있는 동안 수신한 메시지는 즉시 읽음 처리
+        if (msg.sender_id !== myUserIdRef.current) {
+          markRead();
+        }
       });
 
       socket.on("error", (err) => console.warn("소켓 오류:", err.message));
@@ -110,19 +118,8 @@ export default function ChatRoomPage() {
     const text = input.trim();
     if (!text) return;
 
-    const socket = socketRef.current;
-    if (socket?.connected) {
-      socket.emit("send_message", { chat_room_id: chatRoomId, content: text });
-    } else {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = String(now.getMinutes()).padStart(2, "0");
-      const ampm = hours >= 12 ? "오후" : "오전";
-      const h = hours % 12 || 12;
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now(), sender: "me", text, time: `${ampm} ${h}:${minutes}` },
-      ]);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("send_message", { chat_room_id: chatRoomId, content: text });
     }
     setInput("");
     inputRef.current?.focus();
@@ -135,6 +132,9 @@ export default function ChatRoomPage() {
     }
   };
 
+  const opponentName = roomInfo?.opponent?.nickname ?? "";
+  const product = roomInfo?.product;
+
   return (
     <div className="w-full h-full bg-[#FAFAFA] font-app flex flex-col overflow-hidden">
 
@@ -146,8 +146,7 @@ export default function ChatRoomPage() {
           </svg>
         </button>
         <div className="flex-1">
-          <div className="text-[15px] font-bold text-[#222]">{roomInfo.opponentName}</div>
-          <div className="text-xs text-[#aaa]">{roomInfo.opponentDept}</div>
+          <div className="text-[15px] font-bold text-[#222]">{opponentName || "..."}</div>
         </div>
         <button className="bg-transparent border-none cursor-pointer p-1 flex active:opacity-50">
           <svg width="20" height="20" fill="none" stroke="#555" strokeWidth="1.8" viewBox="0 0 24 24">
@@ -159,14 +158,17 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Product Info Bar */}
-      {productBarVisible && (
+      {productBarVisible && product && (
         <div className="bg-white border-b border-[#eee] px-4 py-[10px] flex items-center gap-3 shrink-0">
-          <img src={roomInfo.product.image} alt={roomInfo.product.title} className="w-[46px] h-[46px] rounded-[8px] object-cover shrink-0" />
+          {product.image_url ? (
+            <img src={product.image_url} alt={product.title} className="w-[46px] h-[46px] rounded-[8px] object-cover shrink-0" />
+          ) : (
+            <div className="w-[46px] h-[46px] rounded-[8px] bg-[#f0f0f0] shrink-0" />
+          )}
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] text-[#333] font-medium overflow-hidden text-ellipsis whitespace-nowrap">{roomInfo.product.title}</div>
-            <div className="flex items-center gap-[6px] mt-0.5">
-              <span className="text-[10px] font-bold bg-brand text-white px-[6px] py-[1px] rounded-[3px]">{roomInfo.product.status}</span>
-              <span className="text-[13px] font-bold text-brand">{roomInfo.product.price}원</span>
+            <div className="text-[13px] text-[#333] font-medium overflow-hidden text-ellipsis whitespace-nowrap">{product.title}</div>
+            <div className="mt-0.5">
+              <span className="text-[10px] font-bold bg-brand text-white px-[6px] py-[1px] rounded-[3px]">{product.status}</span>
             </div>
           </div>
           <button className="bg-brand-red text-white border-none rounded-[8px] px-[14px] py-[7px] text-xs font-bold cursor-pointer shrink-0 active:scale-[0.98] transition-transform">
@@ -195,12 +197,12 @@ export default function ChatRoomPage() {
             <div key={msg.id} className={`flex items-end gap-[6px] mb-0.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
               {!isMe && (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-red to-brand flex items-center justify-center text-[13px] font-bold text-white shrink-0 self-start">
-                  {roomInfo.opponentName.charAt(0)}
+                  {opponentName.charAt(0)}
                 </div>
               )}
               <div className={`flex flex-col max-w-[70%] ${isMe ? "items-end" : "items-start"}`}>
                 {!isMe && (i === 0 || messages[i - 1]?.sender !== "opponent") && (
-                  <span className="text-xs text-[#888] mb-[3px] font-semibold">{roomInfo.opponentName}</span>
+                  <span className="text-xs text-[#888] mb-[3px] font-semibold">{opponentName}</span>
                 )}
                 <div className={`flex items-end gap-1 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                   <div className={`px-[14px] py-[10px] text-sm leading-[1.5] break-words ${

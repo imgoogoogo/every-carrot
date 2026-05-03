@@ -1,6 +1,24 @@
-import { useState } from "react"; 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { sendVerification, verifyEmail, register } from "../api(test)/authService"; 
+import { sendVerification, verifyEmail, register } from "../api(test)/authService";
+
+const DEPARTMENTS = [
+  '불교학전공', '불교문화콘텐츠전공', '명상심리상담학과',
+  '웹문예학과', '국사학과', '고고미술사학과',
+  '영어영문학과', '일어일문학과', '중어중문학과', '디자인미술학과',
+  '스포츠과학전공', '스포츠의학전공', '엘리트스포츠전공',
+  '조경·정원디자인학과',
+  '공공행정학전공', '경찰행정학전공', '사회복지학과', '아동청소년교육학과', '항공서비스무역학과',
+  '경영학과', '회계세무학과', '정보경영학과',
+  '호텔관광경영학전공', '조리외식경영학전공',
+  '유아교육과', '가정교육과', '수학교육과',
+  '보건의료정보학과', '뷰티아트산업학과',
+  '바이오·화학융합학부',
+  '전자정보통신공학과', '원자력·에너지·전기공학과',
+  '안전보건전공', '소방방재전공', '자동차소재부품공학전공', '컴퓨터공학과',
+  '한의예과·한의학과', '의예과·의학과', '간호학과',
+  '글로컬인재학부',
+];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -115,13 +133,16 @@ export default function RegisterPage() {
           </div>
 
           <div className="w-full bg-[#f6f6f6] rounded-[12px] border border-transparent focus-within:border-brand focus-within:bg-white transition-all px-4 py-[14px]">
-            <input
-              type="text"
-              placeholder="학과 (예: 컴퓨터공학과)"
+            <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full bg-transparent outline-none text-[15px] text-[#222]"
-            />
+              className="w-full bg-transparent outline-none text-[15px] text-[#222] appearance-none cursor-pointer"
+            >
+              <option value="">학과를 선택하세요</option>
+              {DEPARTMENTS.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
           </div>
 
           <button

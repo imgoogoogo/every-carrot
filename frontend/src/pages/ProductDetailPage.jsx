@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom"; 
-import { getProductById } from "../api(test)/productService"; 
+import { useNavigate, useParams } from "react-router-dom";
+import { getProductById } from "../api(test)/productService";
+import api from "../utils/api";
 
 const StatusBadge = ({ status }) => {
   const bgColors = {
@@ -19,9 +20,10 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams(); 
   
-  const [product, setProduct] = useState(null); 
+  const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -40,6 +42,29 @@ export default function ProductDetailPage() {
 
     fetchDetail();
   }, [id, navigate]);
+
+  const handleStartChat = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return navigate("/login");
+
+    setChatLoading(true);
+    try {
+      const res = await api.post("/api/chats", {
+        product_id: product.id,
+        seller_id: product.seller.id,
+      });
+      navigate(`/chat/${res.data.data.id}`);
+    } catch (err) {
+      const code = err.response?.data?.error?.code;
+      if (code === "CANNOT_CHAT_WITH_YOURSELF") {
+        alert("본인 상품에는 채팅을 시작할 수 없습니다.");
+      } else {
+        alert(err.response?.data?.message || "채팅방 생성에 실패했습니다.");
+      }
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   if (isLoading) return (
     <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen flex items-center justify-center">
@@ -118,8 +143,14 @@ export default function ProductDetailPage() {
           </svg>
         </button>
 
-        <button className="flex-1 bg-brand-red text-white py-4 rounded-[12px] font-bold text-[16px] active:scale-[0.98] transition-transform shadow-md">
-          채팅하기
+        <button
+          onClick={handleStartChat}
+          disabled={chatLoading}
+          className={`flex-1 py-4 rounded-[12px] font-bold text-[16px] transition-transform shadow-md text-white ${
+            chatLoading ? "bg-[#ccc] cursor-not-allowed" : "bg-brand-red active:scale-[0.98] cursor-pointer"
+          }`}
+        >
+          {chatLoading ? "연결 중..." : "채팅하기"}
         </button>
       </div>
     </div>

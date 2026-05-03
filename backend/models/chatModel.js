@@ -24,19 +24,15 @@ async function getChatListByUserId(userId) {
      JOIN products p  ON cr.product_id = p.id
      JOIN users    bu ON cr.buyer_id   = bu.id
      JOIN users    su ON cr.seller_id  = su.id
-     LEFT JOIN (
-       SELECT m1.chat_room_id, m1.content, m1.created_at
-       FROM   messages m1
-       INNER JOIN (
-         SELECT chat_room_id, MAX(created_at) AS max_created_at
-         FROM   messages
-         GROUP  BY chat_room_id
-       ) m2 ON m1.chat_room_id = m2.chat_room_id
-            AND m1.created_at  = m2.max_created_at
-     ) lm ON lm.chat_room_id = cr.id
+     LEFT JOIN messages lm ON lm.id = (
+       SELECT id FROM messages
+       WHERE  chat_room_id = cr.id
+       ORDER  BY created_at DESC, id DESC
+       LIMIT  1
+     )
      WHERE cr.buyer_id = ? OR cr.seller_id = ?
-     ORDER BY lm.last_message_created_at IS NULL ASC,
-              lm.last_message_created_at DESC`,
+     ORDER BY lm.created_at IS NULL ASC,
+              lm.created_at DESC`,
     [userId, userId, userId, userId, userId, userId]
   );
   return rows;
@@ -106,7 +102,11 @@ async function insertMessage(chatRoomId, senderId, content) {
     [chatRoomId, senderId, content]
   );
   const [[message]] = await pool.query(
-    "SELECT id, chat_room_id, sender_id, content, is_read, created_at FROM messages WHERE id = ?",
+    `SELECT m.id, m.chat_room_id, m.sender_id, u.nickname AS sender_nickname,
+            m.content, m.is_read, m.created_at
+     FROM messages m
+     JOIN users u ON u.id = m.sender_id
+     WHERE m.id = ?`,
     [result.insertId]
   );
   return message;
