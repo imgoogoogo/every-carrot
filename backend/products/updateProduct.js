@@ -25,7 +25,7 @@ const updateProduct = async (req, res) => {
     }
 
     const { title, description, price, category_id } = req.body;
-    const imageFile = req.file;
+    const imageFiles = req.files;
 
     if (title !== undefined && (title.length < 2 || title.length > 100)) {
       return res.status(400).json({
@@ -50,9 +50,9 @@ const updateProduct = async (req, res) => {
     if (description !== undefined) {updates.push("description = ?"); values.push(description);}
     if (price !== undefined) {updates.push("price = ?"); values.push(Number(price));}
     if (category_id !== undefined) {updates.push("category_id = ?"); values.push(Number(category_id));}
-    if (imageFile) {
+    if (imageFiles && imageFiles.length > 0) {
       updates.push("image_url = ?");
-      values.push(`/uploads/products/${imageFile.filename}`);
+      values.push(`/uploads/products/${imageFiles[0].filename}`);
     }
 
     if (updates.length === 0) {

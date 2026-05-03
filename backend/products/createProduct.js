@@ -5,7 +5,7 @@ const { getProductById, formatProduct } = require("./helpers");
 const createProduct = async (req, res) => {
   try {
     const { title, description, price, category_id } = req.body;
-    const imageFile = req.file;
+    const imageFiles = req.files;
 
     if (!title || !description || price === undefined || !category_id) {
       return res.status(400).json({
@@ -31,7 +31,8 @@ const createProduct = async (req, res) => {
       });
     }
 
-    const imageUrl = imageFile ? `/uploads/products/${imageFile.filename}` : null;
+    const imageUrls = imageFiles && imageFiles.length > 0 ? imageFiles.map((file) => `/uploads/products/${file.filename}`) : [];
+    const imageUrl = imageUrls.length > 0 ? imageUrls[0] : null;
 
     const [result] = await pool.execute(
       "INSERT INTO products (title, description, price, category_id, seller_id, image_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
