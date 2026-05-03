@@ -8,6 +8,7 @@ import MyProductsPage from "./pages/MyProductsPage";
 import ChatListPage from "./pages/ChatListPage";
 import ChatRoomPage from "./pages/ChatRoomPage";
 import ProductFormPage from "./pages/ProductFormPage";
+import UserProfilePage from "./pages/UserProfilePage";
 
 function App() {
   return (
@@ -20,11 +21,13 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/main" element={<MainPage />} />
             <Route path="/write" element={<ProductFormPage />} />
+            <Route path="/write/:id" element={<ProductFormPage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/mypage/products" element={<MyProductsPage />} />
             <Route path="/chat" element={<ChatListPage />} />
             <Route path="/chat/:id" element={<ChatRoomPage />} />
+            <Route path="/users/:id" element={<UserProfilePage />} />
           </Routes>
         </BrowserRouter>
       </div>

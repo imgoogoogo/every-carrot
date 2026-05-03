@@ -34,6 +34,8 @@ export default function ChatRoomPage() {
   const [roomInfo, setRoomInfo] = useState(null);
   const [input, setInput] = useState("");
   const [productBarVisible, setProductBarVisible] = useState(true);
+  const [dealLoading, setDealLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -68,6 +70,7 @@ export default function ChatRoomPage() {
             sender: m.sender_id === myId ? "me" : "opponent",
             text: m.content,
             time: formatMsgTime(m.created_at),
+            is_read: m.is_read,
           }));
           setMessages(mapped);
         }
@@ -90,19 +93,26 @@ export default function ChatRoomPage() {
       });
 
       socket.on("receive_message", (msg) => {
+        const isMe = msg.sender_id === myUserIdRef.current;
         setMessages((prev) => [
           ...prev,
           {
             id: msg.id,
-            sender: msg.sender_id === myUserIdRef.current ? "me" : "opponent",
+            sender: isMe ? "me" : "opponent",
             text: msg.content,
             time: formatMsgTime(msg.created_at),
+            is_read: false,
           },
         ]);
-        // 채팅방 안에 있는 동안 수신한 메시지는 즉시 읽음 처리
-        if (msg.sender_id !== myUserIdRef.current) {
+        if (!isMe) {
           markRead();
         }
+      });
+
+      socket.on("messages_read", () => {
+        setMessages((prev) =>
+          prev.map((m) => (m.sender === "me" ? { ...m, is_read: true } : m))
+        );
       });
 
       socket.on("error", (err) => console.warn("소켓 오류:", err.message));
@@ -113,6 +123,31 @@ export default function ChatRoomPage() {
       };
     }
   }, [chatRoomId]);
+
+  const handleLeaveRoom = async () => {
+    if (!window.confirm("채팅방을 나가면 대화 내용이 삭제됩니다. 나가시겠습니까?")) return;
+    try {
+      socketRef.current?.emit("leave_room", { chat_room_id: chatRoomId });
+      socketRef.current?.disconnect();
+      await api.delete(`/api/chats/${chatRoomId}`);
+      navigate("/chat");
+    } catch {
+      alert("채팅방 나가기에 실패했습니다.");
+    }
+  };
+
+  const handleDealComplete = async () => {
+    if (!window.confirm("거래를 완료하시겠습니까?")) return;
+    setDealLoading(true);
+    try {
+      await api.patch(`/api/products/${roomInfo.product.id}/status`, { status: "판매완료" });
+      setRoomInfo((prev) => ({ ...prev, product: { ...prev.product, status: "판매완료" } }));
+    } catch (err) {
+      alert(err.response?.data?.message || "상태 변경에 실패했습니다.");
+    } finally {
+      setDealLoading(false);
+    }
+  };
 
   const sendMessage = () => {
     const text = input.trim();
@@ -148,13 +183,28 @@ export default function ChatRoomPage() {
         <div className="flex-1">
           <div className="text-[15px] font-bold text-[#222]">{opponentName || "..."}</div>
         </div>
-        <button className="bg-transparent border-none cursor-pointer p-1 flex active:opacity-50">
-          <svg width="20" height="20" fill="none" stroke="#555" strokeWidth="1.8" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="1.5" fill="#555" />
-            <circle cx="12" cy="12" r="1.5" fill="#555" />
-            <circle cx="12" cy="19" r="1.5" fill="#555" />
-          </svg>
-        </button>
+        <div className="relative">
+          <button onClick={() => setMenuOpen((v) => !v)} className="bg-transparent border-none cursor-pointer p-1 flex active:opacity-50">
+            <svg width="20" height="20" fill="none" stroke="#555" strokeWidth="1.8" viewBox="0 0 24 24">
+              <circle cx="12" cy="5" r="1.5" fill="#555" />
+              <circle cx="12" cy="12" r="1.5" fill="#555" />
+              <circle cx="12" cy="19" r="1.5" fill="#555" />
+            </svg>
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-[110]" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-8 bg-white rounded-[12px] shadow-lg border border-[#eee] z-[120] overflow-hidden w-[140px]">
+                <button
+                  onClick={() => { setMenuOpen(false); handleLeaveRoom(); }}
+                  className="w-full px-4 py-3 text-left text-[14px] text-red-500 hover:bg-[#f9f9f9] active:bg-[#f5f5f5]"
+                >
+                  채팅방 나가기
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Product Info Bar */}
@@ -171,9 +221,21 @@ export default function ChatRoomPage() {
               <span className="text-[10px] font-bold bg-brand text-white px-[6px] py-[1px] rounded-[3px]">{product.status}</span>
             </div>
           </div>
-          <button className="bg-brand-red text-white border-none rounded-[8px] px-[14px] py-[7px] text-xs font-bold cursor-pointer shrink-0 active:scale-[0.98] transition-transform">
-            거래 완료
-          </button>
+          {roomInfo?.is_seller && (
+            <button
+              onClick={handleDealComplete}
+              disabled={dealLoading || product.status === "판매완료"}
+              className={`border-none rounded-[8px] px-[14px] py-[7px] text-xs font-bold shrink-0 transition-transform text-white ${
+                product.status === "판매완료"
+                  ? "bg-[#ccc] cursor-not-allowed"
+                  : dealLoading
+                  ? "bg-[#ccc] cursor-not-allowed"
+                  : "bg-brand-red cursor-pointer active:scale-[0.98]"
+              }`}
+            >
+              {product.status === "판매완료" ? "거래완료" : dealLoading ? "처리 중..." : "거래 완료"}
+            </button>
+          )}
           <button onClick={() => setProductBarVisible(false)} className="bg-transparent border-none cursor-pointer p-1 shrink-0">
             <svg width="16" height="16" fill="none" stroke="#bbb" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
@@ -212,7 +274,10 @@ export default function ChatRoomPage() {
                   }`}>
                     {msg.text}
                   </div>
-                  {showTime && <span className="text-[11px] text-[#bbb] shrink-0 mb-0.5">{msg.time}</span>}
+                  <div className={`flex flex-col items-end gap-0.5 shrink-0 mb-0.5 ${isMe ? "" : "items-start"}`}>
+                    {isMe && !msg.is_read && <span className="text-[10px] text-brand font-bold leading-none">1</span>}
+                    {showTime && <span className="text-[11px] text-[#bbb]">{msg.time}</span>}
+                  </div>
                 </div>
               </div>
               {isMe && <div className="w-8 shrink-0" />}

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 
@@ -26,6 +26,21 @@ export default function ProductFormPage() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    api.get(`/api/products/${id}`).then((res) => {
+      const p = res.data.data;
+      setTitle(p.title);
+      setCategory(String(p.category.id));
+      setPrice(Number(p.price).toLocaleString());
+      setDescription(p.description);
+      if (p.image_url) setImagePreview(p.image_url);
+    }).catch(() => {
+      alert("상품 정보를 불러올 수 없습니다.");
+      navigate(-1);
+    });
+  }, [id, isEdit, navigate]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];

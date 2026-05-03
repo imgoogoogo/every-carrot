@@ -24,6 +24,16 @@ export default function ProductDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const myUserId = (() => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return null;
+      return JSON.parse(atob(token.split(".")[1])).id ?? null;
+    } catch { return null; }
+  })();
+  const isMine = product && myUserId === product.seller.id;
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -42,6 +52,17 @@ export default function ProductDetailPage() {
 
     fetchDetail();
   }, [id, navigate]);
+
+  const handleDelete = async () => {
+    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await api.delete(`/api/products/${id}`);
+      alert("삭제되었습니다.");
+      navigate("/main");
+    } catch (err) {
+      alert(err.response?.data?.message || "삭제에 실패했습니다.");
+    }
+  };
 
   const handleStartChat = async () => {
     const token = localStorage.getItem("accessToken");
@@ -83,11 +104,34 @@ export default function ProductDetailPage() {
             <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <button className="p-1 active:opacity-50">
-          <svg width="24" height="24" fill="none" stroke="#333" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M12 5v.01M12 12v.01M12 19v.01" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        {isMine && (
+          <div className="relative">
+            <button onClick={() => setMenuOpen((v) => !v)} className="p-1 active:opacity-50">
+              <svg width="24" height="24" fill="none" stroke="#333" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 5v.01M12 12v.01M12 19v.01" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-[110]" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-8 bg-white rounded-[12px] shadow-lg border border-[#eee] z-[120] overflow-hidden w-[120px]">
+                  <button
+                    onClick={() => { setMenuOpen(false); navigate(`/write/${id}`); }}
+                    className="w-full px-4 py-3 text-left text-[14px] text-[#222] hover:bg-[#f9f9f9] active:bg-[#f5f5f5]"
+                  >
+                    수정하기
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpen(false); handleDelete(); }}
+                    className="w-full px-4 py-3 text-left text-[14px] text-red-500 hover:bg-[#f9f9f9] active:bg-[#f5f5f5]"
+                  >
+                    삭제하기
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar w-full">
@@ -98,7 +142,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <div className="w-full px-[18px] pt-3 pb-0 flex items-center gap-3">
+        <div className="w-full px-[18px] pt-3 pb-0 flex items-center gap-3 cursor-pointer active:opacity-70" onClick={() => navigate(`/users/${product.seller.id}`)}>
           <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-brand to-brand-soft flex items-center justify-center text-white font-bold text-lg">
             {product.seller.profile_image ? (
               <img src={product.seller.profile_image} className="w-full h-full rounded-full object-cover" alt="프로필" />

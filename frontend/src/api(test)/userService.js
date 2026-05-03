@@ -2,7 +2,16 @@ import axios from "./axios";
 
 export const getUserProfile = async () => {
   try {
-    const response = await axios.get("/users/me"); 
+    const response = await axios.get("/users/me");
+    return response.data.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getUserProfileById = async (userId) => {
+  try {
+    const response = await axios.get(`/users/${userId}`);
     return response.data.data;
   } catch (error) {
     throw error.response?.data || error.message;
