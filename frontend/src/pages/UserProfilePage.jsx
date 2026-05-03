@@ -9,7 +9,14 @@ export default function UserProfilePage() {
 
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
+  const [activeTab, setActiveTab] = useState("전체");
   const [isLoading, setIsLoading] = useState(true);
+
+  const TABS = ["전체", "판매중", "판매완료"];
+
+  const filteredProducts = activeTab === "전체"
+    ? products
+    : products.filter((p) => p.status === activeTab);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -17,7 +24,7 @@ export default function UserProfilePage() {
       try {
         const [userRes, productsRes] = await Promise.all([
           getUserProfileById(id),
-          api.get(`/api/products?seller_id=${id}&status=판매중`),
+          api.get(`/api/products?seller_id=${id}`),
         ]);
         setUser(userRes);
         if (productsRes.data?.success) {
@@ -69,16 +76,34 @@ export default function UserProfilePage() {
         )}
       </div>
 
+      {/* Tab Bar */}
+      <div className="flex border-b border-[#eee] sticky top-[53px] bg-white z-[90]">
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-3 text-[14px] font-bold transition-colors relative ${
+              activeTab === tab ? "text-brand" : "text-[#bbb]"
+            }`}
+          >
+            {tab}
+            <span className="ml-1 text-[12px]">
+              {tab === "전체" ? products.length : products.filter((p) => p.status === tab).length}
+            </span>
+            {activeTab === tab && (
+              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-brand rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Products */}
       <div className="flex-1 px-[18px] py-4">
-        <div className="text-[15px] font-bold text-[#222] mb-3">
-          판매 중인 물품 <span className="text-brand">{products.length}</span>
-        </div>
-        {products.length === 0 ? (
-          <div className="text-center py-12 text-[#bbb] text-sm">판매 중인 물품이 없습니다</div>
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-12 text-[#bbb] text-sm">물품이 없습니다</div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <div
                 key={p.id}
                 onClick={() => navigate(`/products/${p.id}`)}
@@ -103,3 +128,4 @@ export default function UserProfilePage() {
     </div>
   );
 }
+
